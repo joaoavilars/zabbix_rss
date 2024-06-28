@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 // Config struct to hold the URL from the config file
@@ -33,6 +35,14 @@ type Item struct {
 	Link        string `xml:"link"`
 	Description string `xml:"description"`
 	GUID        string `xml:"guid"`
+}
+
+// JSONItem struct to marshal the JSON data
+type JSONItem struct {
+	Title       string `json:"title"`
+	Link        string `json:"link"`
+	Description string `json:"description"`
+	GUID        string `json:"guid,omitempty"`
 }
 
 func parseRSSFeed(url string) ([]Item, error) {
@@ -68,13 +78,42 @@ func readConfig(filePath string) (Config, error) {
 	return config, err
 }
 
+func convertToJSONItems(items []Item) []JSONItem {
+	var jsonItems []JSONItem
+	for _, item := range items {
+		jsonItem := JSONItem{
+			Title:       item.Title,
+			Link:        item.Link,
+			Description: item.Description,
+		}
+		if item.GUID != "" {
+			jsonItem.GUID = item.GUID
+		}
+		jsonItems = append(jsonItems, jsonItem)
+	}
+	return jsonItems
+}
+
 func main() {
-	config, err := readConfig("config.json")
+	// Get the name of the executable
+	executable, err := os.Executable()
+	if err != nil {
+		fmt.Println("Error getting executable name:", err)
+		return
+	}
+
+	// Determine the config file name based on the executable name
+	executableName := filepath.Base(executable)
+	configFileName := strings.TrimSuffix(executableName, filepath.Ext(executableName)) + ".json"
+
+	// Read the config file
+	config, err := readConfig(configFileName)
 	if err != nil {
 		fmt.Println("Error reading config file:", err)
 		return
 	}
 
+	// Parse the RSS feed
 	items, err := parseRSSFeed(config.URL)
 	if err != nil {
 		fmt.Println("Error parsing RSS feed:", err)
@@ -82,7 +121,8 @@ func main() {
 	}
 
 	// Convert items to JSON
-	jsonData, err := json.MarshalIndent(items, "", "  ")
+	jsonItems := convertToJSONItems(items)
+	jsonData, err := json.MarshalIndent(jsonItems, "", "  ")
 	if err != nil {
 		fmt.Println("Error converting to JSON:", err)
 		return
