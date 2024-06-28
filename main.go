@@ -81,7 +81,12 @@ func main() {
 		return
 	}
 
-	for _, item := range items {
-		fmt.Printf("Title: %s\nLink: %s\nDescription: %s\nGUID: %s\n\n", item.Title, item.Link, item.Description, item.GUID)
+	// Convert items to JSON
+	jsonData, err := json.MarshalIndent(items, "", "  ")
+	if err != nil {
+		fmt.Println("Error converting to JSON:", err)
+		return
 	}
+
+	fmt.Println(string(jsonData))
 }
